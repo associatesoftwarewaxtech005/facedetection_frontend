@@ -1,0 +1,140 @@
+:root {
+  /* Security Pro Light Theme */
+  --color-gold: hsl(217, 91%, 56%); /* Accent Blue */
+  --color-gold-bright: hsl(217, 95%, 63%);
+  --color-gold-dim: hsl(217, 85%, 48%);
+  --color-gold-bg: hsla(217, 91%, 56%, 0.08);
+  --color-gold-border: hsla(217, 91%, 56%, 0.18);
+  
+  --color-green: hsl(156, 72%, 40%); /* Emerald Green */
+  --color-green-bg: hsla(156, 72%, 40%, 0.08);
+  --color-green-border: hsla(156, 72%, 40%, 0.2);
+
+  --color-red: hsl(352, 89%, 60%); /* Coral Red */
+  --color-red-bg: hsla(352, 89%, 60%, 0.08);
+  --color-red-border: hsla(352, 89%, 60%, 0.2);
+
+  /* Backgrounds & Borders */
+  --color-bg-deep: #F7F9FB; /* Very light gray/blue background from mock */
+  --color-bg-card: #FFFFFF; /* Pure white card surface */
+  --color-bg-card-hover: #F1F5F9;
+  --color-border: #E8EEF5; /* Very soft borders */
+  --color-border-bright: #CBD5E1;
+  
+  --color-text-primary: #0F172A; /* Slate-900 primary text */
+  --color-text-secondary: #475569; /* Slate-700 */
+  --color-text-muted: #94A3B8; /* Slate-400 */
+
+  /* Dark Navy Accent Card (Alerts Card) */
+  --color-navy-card: #151E33;
+  --color-navy-card-hover: #1D2A47;
+
+  /* Typography */
+  --font-hud: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Transitions */
+  --transition-fast: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  
+  /* Hard Grid Spacing */
+  --grid-4: 4px;
+  --grid-8: 8px;
+  --grid-12: 12px;
+  --grid-16: 16px;
+  --grid-20: 20px;
+  --grid-24: 24px;
+  --grid-32: 32px;
+  
+  box-sizing: border-box;
+}
+
+body.dark {
+  /* Cosmic Dark Theme */
+  --color-gold: hsl(217, 95%, 64%);
+  --color-gold-bright: hsl(217, 100%, 70%);
+  --color-gold-dim: hsl(217, 85%, 55%);
+  --color-gold-bg: hsla(217, 95%, 64%, 0.15);
+  --color-gold-border: hsla(217, 95%, 64%, 0.3);
+
+  --color-green: hsl(150, 84%, 43%);
+  --color-green-bg: hsla(150, 84%, 43%, 0.12);
+  --color-green-border: hsla(150, 84%, 43%, 0.3);
+
+  --color-red: hsl(355, 92%, 64%);
+  --color-red-bg: hsla(355, 92%, 64%, 0.12);
+  --color-red-border: hsla(355, 92%, 64%, 0.35);
+
+  --color-bg-deep: #090D1A; /* Deep cosmic dark */
+  --color-bg-card: #111827; /* Dark gray/slate surface */
+  --color-bg-card-hover: #1F2937;
+  --color-border: #1F2937;
+  --color-border-bright: #374151;
+  
+  --color-text-primary: #F9FAFB;
+  --color-text-secondary: #D1D5DB;
+  --color-text-muted: #9CA3AF;
+
+  --color-navy-card: #1E293B;
+  --color-navy-card-hover: #334155;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-deep);
+  color: var(--color-text-primary);
+  font-family: var(--font-hud);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background-color var(--transition-normal);
+}
+
+/* Custom Selection style */
+::selection {
+  background: var(--color-gold);
+  color: #ffffff;
+}
+
+/* Scrollbars - modern, thin, round */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-bright);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Custom glassmorphism helpers */
+.glass-effect {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+}

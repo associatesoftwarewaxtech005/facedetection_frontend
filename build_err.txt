@@ -1,0 +1,88 @@
+✗ Build failed in 278ms
+error during build:
+Build failed with 1 error:
+
+[plugin @rolldown/plugin-babel] /Users/abhineshas/projects/facedetection/frontend/src/pages/Scan.jsx:458:16
+RolldownError: [BabelError] /Users/abhineshas/projects/facedetection/frontend/src/pages/Scan.jsx: Expected corresponding JSX closing tag for <div>. (458:16)
+
+  456 |     <div style={styles.container}>
+  457 |                   <path d="M 240 135 L 240 120 A 40 40 0 0 0 200 80" />
+> 458 |                 </g>
+      |                 ^
+  459 |
+  460 |                 {/* Rotating dash circle (sensor scanning) */}
+  461 |                 <circle className="face-id-ring" cx="160" cy="160" r="95" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6,12" fill="none" />
+    at error (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/node_modules/rolldown/dist/shared/logs-aMKUxRpj.mjs:147:24)
+    at TransformPluginContextImpl.error (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/node_modules/rolldown/dist/shared/bindingify-input-options-ClrST5Xx.mjs:1046:10)
+    at TransformPluginContextImpl.handler (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/@rolldown/plugin-babel/dist/index.mjs:404:11)
+    at async plugin (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/node_modules/rolldown/dist/shared/bindingify-input-options-ClrST5Xx.mjs:1185:16)
+    at async plugin.<computed> (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/node_modules/rolldown/dist/shared/bindingify-input-options-ClrST5Xx.mjs:1625:12)
+Caused by:
+  SyntaxError: /Users/abhineshas/projects/facedetection/frontend/src/pages/Scan.jsx: Expected corresponding JSX closing tag for <div>. (458:16)
+  
+    456 |     <div style={styles.container}>
+    457 |                   <path d="M 240 135 L 240 120 A 40 40 0 0 0 200 80" />
+  > 458 |                 </g>
+        |                 ^
+    459 |
+    460 |                 {/* Rotating dash circle (sensor scanning) */}
+    461 |                 <circle className="face-id-ring" cx="160" cy="160" r="95" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6,12" fill="none" />
+      at constructor (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:365:19)
+      at JSXParserMixin.raise (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:6616:19)
+      at JSXParserMixin.jsxParseElementAt (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:4739:16)
+      at JSXParserMixin.jsxParseElement (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:4761:17)
+      at JSXParserMixin.parseExprAtom (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:4771:19)
+      at JSXParserMixin.parseExprSubscripts (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:11098:23)
+      at JSXParserMixin.parseUpdate (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:11083:21)
+      at JSXParserMixin.parseMaybeUnary (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:11063:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10916:61)
+      at JSXParserMixin.parseExprOps (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10921:23)
+      at JSXParserMixin.parseMaybeConditional (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10898:23)
+      at JSXParserMixin.parseMaybeAssign (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10848:21)
+      at /Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10817:39
+      at JSXParserMixin.allowInAnd (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12443:12)
+      at JSXParserMixin.parseMaybeAssignAllowIn (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10817:17)
+      at JSXParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12510:17)
+      at JSXParserMixin.parseParenAndDistinguishExpression (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:11692:28)
+      at JSXParserMixin.parseExprAtom (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:11348:23)
+      at JSXParserMixin.parseExprAtom (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:4776:20)
+      at JSXParserMixin.parseExprSubscripts (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:11098:23)
+      at JSXParserMixin.parseUpdate (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:11083:21)
+      at JSXParserMixin.parseMaybeUnary (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:11063:23)
+      at JSXParserMixin.parseMaybeUnaryOrPrivate (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10916:61)
+      at JSXParserMixin.parseExprOps (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10921:23)
+      at JSXParserMixin.parseMaybeConditional (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10898:23)
+      at JSXParserMixin.parseMaybeAssign (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10848:21)
+      at JSXParserMixin.parseExpressionBase (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10801:23)
+      at /Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10797:39
+      at JSXParserMixin.allowInAnd (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12438:16)
+      at JSXParserMixin.parseExpression (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:10797:17)
+      at JSXParserMixin.parseReturnStatement (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13159:28)
+      at JSXParserMixin.parseStatementContent (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12815:21)
+      at JSXParserMixin.parseStatementLike (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12784:17)
+      at JSXParserMixin.parseStatementListItem (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12764:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13333:61)
+      at JSXParserMixin.parseBlockBody (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13326:10)
+      at JSXParserMixin.parseBlock (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13314:10)
+      at JSXParserMixin.parseFunctionBody (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12117:24)
+      at JSXParserMixin.parseFunctionBodyAndFinish (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12103:10)
+      at /Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13462:12
+      at JSXParserMixin.withSmartMixTopicForbiddingContext (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12420:14)
+      at JSXParserMixin.parseFunction (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13461:10)
+      at JSXParserMixin.parseExportDefaultExpression (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13924:19)
+      at JSXParserMixin.parseExport (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13845:25)
+      at JSXParserMixin.parseStatementContent (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12895:27)
+      at JSXParserMixin.parseStatementLike (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12784:17)
+      at JSXParserMixin.parseModuleItem (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12761:17)
+      at JSXParserMixin.parseBlockOrModuleBlockBody (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13333:36)
+      at JSXParserMixin.parseBlockBody (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:13326:10)
+      at JSXParserMixin.parseProgram (/Users/abhineshas/projects/facedetection/frontend/node_modules/@babel/parser/lib/index.js:12639:10)
+    at aggregateBindingErrorsIntoJsError (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/node_modules/rolldown/dist/shared/error-BuvQYXuZ.mjs:48:18)
+    at unwrapBindingResult (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/node_modules/rolldown/dist/shared/error-BuvQYXuZ.mjs:18:128)
+    at #build (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/node_modules/rolldown/dist/shared/rolldown-build-CrPk_lZe.mjs:3246:34)
+    at async buildEnvironment (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/dist/node/chunks/node.js:33253:64)
+    at async Object.build (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/dist/node/chunks/node.js:33675:19)
+    at async Object.buildApp (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/dist/node/chunks/node.js:33672:153)
+    at async CAC.<anonymous> (file:///Users/abhineshas/projects/facedetection/frontend/node_modules/vite/dist/node/cli.js:777:3) {
+  errors: [Getter/Setter]
+}
