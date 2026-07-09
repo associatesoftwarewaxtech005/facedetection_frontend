@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../config/api';
 import { Fingerprint, Search, Shield, ShieldCheck, Mail, Phone, Calendar, Clock, Award } from 'lucide-react';
 import agentAvatar from '../assets/agent_avatar.png';
+
+const formatWorkingHours = (decimalHours) => {
+  if (decimalHours === null || decimalHours === undefined) return '0h 0m';
+  const totalMinutes = Math.round(decimalHours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${h}h ${m}m`;
+};
 
 export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) {
   const [employeeId, setEmployeeId] = useState(loggedInEmployee ? loggedInEmployee.employeeId : '');
@@ -47,7 +56,7 @@ export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) 
     setLoading(true);
     setLoginError('');
     try {
-      const res = await fetch('http://localhost:8082/api/employee/login-with-pin', {
+      const res = await apiFetch('/api/employee/login-with-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -100,7 +109,7 @@ export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) 
     setErrorMsg('');
     try {
       // 1. Fetch from employees list to get details
-      const empListRes = await fetch('http://localhost:8082/api/admin/employees');
+      const empListRes = await apiFetch('/api/admin/employees');
       if (empListRes.ok) {
         const list = await empListRes.json();
         const found = list.find(e => e.employeeId.toUpperCase() === targetId.toUpperCase());
@@ -109,7 +118,7 @@ export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) 
           setEmployee(found);
           
           // 2. Fetch history
-          const historyRes = await fetch(`http://localhost:8082/api/attendance/employee/${found.employeeId}`);
+          const historyRes = await apiFetch(`/api/attendance/employee/${found.employeeId}`);
           if (historyRes.ok) {
             const history = await historyRes.json();
             // Sort by newest date
@@ -156,7 +165,8 @@ export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) 
 
   // Stats calculation
   const calculateTotalHours = () => {
-    return records.reduce((acc, r) => acc + (r.workingHours || 0), 0).toFixed(1);
+    const total = records.reduce((acc, r) => acc + (r.workingHours || 0), 0);
+    return formatWorkingHours(total);
   };
 
   const countStatus = (status) => {
@@ -256,7 +266,7 @@ export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) 
           <div style={styles.metricsGrid}>
             <div className="cyber-panel" style={styles.metricCard}>
               <div style={styles.metricHeader} className="mono-font">HOURS WORKED</div>
-              <div style={styles.metricVal} className="hud-font">{calculateTotalHours()} hrs</div>
+              <div style={styles.metricVal} className="hud-font">{calculateTotalHours()}</div>
             </div>
 
             <div className="cyber-panel" style={styles.metricCard}>
@@ -293,7 +303,7 @@ export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) 
                         <span>In: {rec.checkInTime ? rec.checkInTime.substring(0, 5) : '--:--'}</span>
                         <span>Out: {rec.checkOutTime ? rec.checkOutTime.substring(0, 5) : '--:--'}</span>
                       </div>
-                      <span style={styles.workHours}>{rec.workingHours || 0} hrs</span>
+                      <span style={styles.workHours}>{formatWorkingHours(rec.workingHours)}</span>
                     </div>
                   </div>
                 ))
@@ -832,3 +842,5 @@ const styles = {
     outline: 'none'
   }
 };
+
+

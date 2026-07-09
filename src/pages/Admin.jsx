@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '../config/api';
 import { 
   Users, Calendar, BarChart3, Settings, ShieldAlert, Plus, Trash2, Edit2, LogOut, Check, X, 
   Camera, Download, Printer, ShieldCheck, Mail, Phone, Clock, AlertTriangle, Eye, Terminal, FileClock 
 } from 'lucide-react';
+
+const formatWorkingHours = (decimalHours) => {
+  if (decimalHours === null || decimalHours === undefined) return '0h 0m';
+  const totalMinutes = Math.round(decimalHours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${h}h ${m}m`;
+};
 
 export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -96,49 +105,49 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
   const loadDashboardData = async () => {
     try {
       // Fetch Employees
-      const empRes = await fetch('http://localhost:8082/api/admin/employees');
+      const empRes = await apiFetch('/api/admin/employees');
       if (empRes.ok) {
         const empData = await empRes.json();
         setEmployees(empData);
       }
 
       // Fetch Attendance Records
-      const attRes = await fetch('http://localhost:8082/api/admin/attendance');
+      const attRes = await apiFetch('/api/admin/attendance');
       if (attRes.ok) {
         const attData = await attRes.json();
         setAttendance(attData);
       }
 
       // Fetch Analytics
-      const anaRes = await fetch('http://localhost:8082/api/admin/analytics');
+      const anaRes = await apiFetch('/api/admin/analytics');
       if (anaRes.ok) {
         const anaData = await anaRes.json();
         setAnalytics(anaData);
       }
 
       // Fetch Notifications
-      const notifRes = await fetch('http://localhost:8082/api/notifications');
+      const notifRes = await apiFetch('/api/notifications');
       if (notifRes.ok) {
         const notifData = await notifRes.json();
         setNotifications(notifData);
       }
 
       // Fetch Security Logs
-      const secLogsRes = await fetch('http://localhost:8082/api/admin/security-logs');
+      const secLogsRes = await apiFetch('/api/admin/security-logs');
       if (secLogsRes.ok) {
         const secLogsData = await secLogsRes.json();
         setSecurityLogs(secLogsData);
       }
 
       // Fetch Employee Sessions
-      const essRes = await fetch('http://localhost:8082/api/admin/employee-sessions');
+      const essRes = await apiFetch('/api/admin/employee-sessions');
       if (essRes.ok) {
         const essData = await essRes.json();
         setEmployeeSessions(essData);
       }
 
       // Fetch System Audits
-      const sysAudRes = await fetch('http://localhost:8082/api/logs');
+      const sysAudRes = await apiFetch('/api/logs');
       if (sysAudRes.ok) {
         const sysAudData = await sysAudRes.json();
         setSystemAudits([...sysAudData].reverse());
@@ -163,7 +172,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
     e.preventDefault();
     setErrorMsg('');
     try {
-      const res = await fetch('http://localhost:8082/api/admin/login', {
+      const res = await apiFetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -206,7 +215,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
     };
 
     try {
-      const res = await fetch('http://localhost:8082/api/admin/employees', {
+      const res = await apiFetch('/api/admin/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -246,7 +255,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
   const saveEmployeeEdit = async (id) => {
     if (!editEmpName.trim()) return;
     try {
-      const res = await fetch(`http://localhost:8082/api/admin/employees/${id}`, {
+      const res = await apiFetch(`/api/admin/employees/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -272,7 +281,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
   const handleDeleteEmployee = async (id) => {
     if (!window.confirm("ARE YOU SURE YOU WANT TO DELETE THIS EMPLOYEE AND ALL ASSOCIATED BIOMETRICS/LOGS?")) return;
     try {
-      const res = await fetch(`http://localhost:8082/api/admin/employees/${id}`, {
+      const res = await apiFetch(`/api/admin/employees/${id}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -339,7 +348,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
     }
 
     try {
-      const res = await fetch(`http://localhost:8082/api/admin/employees/${cameraEmployee.id}/faces`, {
+      const res = await apiFetch(`/api/admin/employees/${cameraEmployee.id}/faces`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -390,7 +399,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
 
   const saveRecordEdit = async (id) => {
     try {
-      const res = await fetch(`http://localhost:8082/api/admin/attendance/${id}`, {
+      const res = await apiFetch(`/api/admin/attendance/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -485,7 +494,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
   const handleDeleteLog = async (id) => {
     if (!window.confirm('ARE YOU SURE YOU WANT TO PURGE THIS LOG ENTRY?')) return;
     try {
-      const res = await fetch(`http://localhost:8082/api/logs/${id}`, {
+      const res = await apiFetch(`/api/logs/${id}`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -514,7 +523,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
   // ==========================================
   const clearNotifications = async () => {
     try {
-      const res = await fetch('http://localhost:8082/api/notifications/read', { method: 'POST' });
+      const res = await apiFetch('/api/notifications/read', { method: 'POST' });
       if (res.ok) {
         loadDashboardData();
       }
@@ -1184,7 +1193,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                           }} className="mono-font">{rec.status}</span>
                         </div>
                         <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }} className="mono-font">
-                          ID: {rec.employee.employeeId} // In: {rec.checkInTime ? rec.checkInTime.substring(0, 5) : '--'} // Out: {rec.checkOutTime ? rec.checkOutTime.substring(0, 5) : '--'} // Hours: {rec.workingHours || 0.0} hrs
+                          ID: {rec.employee.employeeId} // In: {rec.checkInTime ? rec.checkInTime.substring(0, 5) : '--'} // Out: {rec.checkOutTime ? rec.checkOutTime.substring(0, 5) : '--'} // Hours: {formatWorkingHours(rec.workingHours)}
                         </div>
                       </div>
                     </div>
@@ -2147,3 +2156,5 @@ const styles = {
     position: 'relative'
   }
 };
+
+

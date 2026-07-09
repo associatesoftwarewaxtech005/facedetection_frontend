@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../config/api';
 import { Shield, ShieldCheck, ShieldAlert, Users, Clock, AlertTriangle, ArrowRightLeft, ArrowUpRight, ChevronRight, UserPlus, ScanFace, FileClock, Activity } from 'lucide-react';
 
 export default function HomeTab({ setTab, setScanMode }) {
@@ -17,14 +18,14 @@ export default function HomeTab({ setTab, setScanMode }) {
   const fetchDashboardData = async () => {
     try {
       // Fetch stats
-      const statsRes = await fetch('http://localhost:8082/api/admin/analytics');
+      const statsRes = await apiFetch('/api/admin/analytics');
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats(statsData);
       }
 
       // Fetch logs
-      const logsRes = await fetch('http://localhost:8082/api/logs');
+      const logsRes = await apiFetch('/api/logs');
       if (logsRes.ok) {
         const logsData = await logsRes.json();
         // reverse to get recent first
@@ -32,7 +33,7 @@ export default function HomeTab({ setTab, setScanMode }) {
       }
 
       // Fetch unread count
-      const notifRes = await fetch('http://localhost:8082/api/notifications');
+      const notifRes = await apiFetch('/api/notifications');
       if (notifRes.ok) {
         const notifData = await notifRes.json();
         setUnreadCount(notifData.length);
@@ -264,3 +265,5 @@ export default function HomeTab({ setTab, setScanMode }) {
     </div>
   );
 }
+
+

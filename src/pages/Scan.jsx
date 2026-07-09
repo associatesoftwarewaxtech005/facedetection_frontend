@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '../config/api';
 import { Camera, AlertCircle, RefreshCw, CheckCircle2, ShieldCheck, ShieldAlert, ArrowRightLeft, ScanFace } from 'lucide-react';
 
 export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'check-in', verificationTarget, onCancelVerification }) {
   const [mode, setMode] = useState(initialMode); // 'check-in', 'check-out', 'verify'
   const [stream, setStream] = useState(null);
   const [cameraError, setCameraError] = useState(false);
-  
+
   // Scanning state machine
   const [scanning, setScanning] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [flashActive, setFlashActive] = useState(false);
   const [scanStatus, setScanStatus] = useState('READY TO SCAN');
   const [progress, setProgress] = useState(0);
-  
+
   // Biometric selector values
   const [employees, setEmployees] = useState([]);
   const [activeSubjectId, setActiveSubjectId] = useState(() => {
@@ -21,11 +22,11 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
   const [spoofMode, setSpoofMode] = useState(false); // simulates a photo spoof attack
   const [simulateBlur, setSimulateBlur] = useState(false); // simulates blurry image quality
   const [showConsole, setShowConsole] = useState(false);
-  
+
   // Liveness challenge states
   const [livenessChallenge, setLivenessChallenge] = useState('');
   const [livenessStep, setLivenessStep] = useState(0); // 0 = idle, 1 = look straight, 2 = blink challenge, 3 = head turn, 4 = finished
-  
+
   // Final verification result overlay
   const [verificationResult, setVerificationResult] = useState(null); // 'success', 'error', or null
   const [resultMessage, setResultMessage] = useState('');
@@ -40,11 +41,19 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const timerRef = useRef(null);
+  const recognitionInProgressRef = useRef(false);
+
+  useEffect(() => {
+    if (!scanning) {
+      recognitionInProgressRef.current = false;
+    }
+  }, [scanning]);
+
 
   // Fetch active employees to populate biometric selector dropdown
   const fetchEmployees = async () => {
     try {
-      const res = await fetch('http://localhost:8082/api/admin/employees');
+      const res = await apiFetch('/api/admin/employees');
       if (res.ok) {
         const data = await res.json();
         // filter only active ones for realistic scans
@@ -100,16 +109,16 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = audioCtx.createOscillator();
       const volume = audioCtx.createGain();
-      
+
       osc.type = type;
       osc.frequency.value = freq;
-      
+
       volume.gain.setValueAtTime(gain, audioCtx.currentTime);
       volume.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-      
+
       osc.connect(volume);
       volume.connect(audioCtx.destination);
-      
+
       osc.start();
       osc.stop(audioCtx.currentTime + duration);
     } catch (e) {
@@ -178,26 +187,26 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
         canvas.height = 64;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, 64, 64);
-        
+
         const imgData = ctx.getImageData(0, 0, 64, 64);
         const data = imgData.data;
-        
+
         let sum = 0;
         let sumSq = 0;
         const length = 64 * 64;
         const grayscale = new Float32Array(length);
-        
+
         for (let i = 0; i < length; i++) {
           const r = data[i * 4];
           const g = data[i * 4 + 1];
           const b = data[i * 4 + 2];
           grayscale[i] = 0.299 * r + 0.587 * g + 0.114 * b;
         }
-        
+
         let laplacianSum = 0;
         let laplacianSumSq = 0;
         let count = 0;
-        
+
         for (let y = 1; y < 63; y++) {
           for (let x = 1; x < 63; x++) {
             const center = grayscale[y * 64 + x];
@@ -205,14 +214,14 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
             const right = grayscale[y * 64 + (x + 1)];
             const top = grayscale[(y - 1) * 64 + x];
             const bottom = grayscale[(y + 1) * 64 + x];
-            
+
             const laplacian = -4 * center + left + right + top + bottom;
             laplacianSum += laplacian;
             laplacianSumSq += laplacian * laplacian;
             count++;
           }
         }
-        
+
         const mean = laplacianSum / count;
         const variance = (laplacianSumSq / count) - (mean * mean);
         resolve(variance);
@@ -224,11 +233,13 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
   };
 
   const handleStartScan = async () => {
-    if (scanning) return;
+    if (scanning || recognitionInProgressRef.current) return;
+    recognitionInProgressRef.current = true;
+
 
     // Fetch latest employees first to ensure we have any newly registered face embeddings
     try {
-      const res = await fetch('http://localhost:8082/api/admin/employees');
+      const res = await apiFetch('/api/admin/employees');
       if (res.ok) {
         const data = await res.json();
         setEmployees(data);
@@ -246,7 +257,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
     setLivenessStep(1);
     setScanStatus('BIOMETRIC CAPTURE ACTIVE');
     setLivenessChallenge('CAPTURING FACE IMAGE...');
-    
+
     // Play camera shutter sound
     playSound(600, 0.1, 'sine', 0.05);
 
@@ -278,7 +289,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
       stepProgress += 10;
       setProgress(stepProgress);
       playScanTick();
-      
+
       if (stepProgress === 30) {
         setLivenessStep(2);
         setLivenessChallenge('PROCESSING FACE MESH LANDMARKS');
@@ -302,10 +313,12 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
   };
 
   const submitBiometrics = async (imgParam) => {
+    recognitionInProgressRef.current = true;
     const activeImage = imgParam || capturedImage;
+
     setScanStatus('VERIFYING IDENTITY WITH SECURE DATABASE');
     setLivenessChallenge('CONTACTING SECURITY ENGINE...');
-    
+
     // Image quality and blurriness verification
     if (activeImage) {
       const score = await checkImageSharpness(activeImage);
@@ -316,7 +329,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
         setResultDetails('Biometric verification failed: Image resolution or focus is too low. Please adjust lighting/position and try again.');
         setPadlockState('error');
         playErrorTone();
-        
+
         setTimeout(() => {
           setScanning(false);
           setVerificationResult(null);
@@ -328,9 +341,9 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
         return;
       }
     }
-    
+
     // Resolve the active simulated employee ID in the camera field
-    const resolvedEmpId = activeSubjectId === 'SAVED' 
+    const resolvedEmpId = activeSubjectId === 'SAVED'
       ? (localStorage.getItem('simulated_face_employee_id') || 'UNKNOWN')
       : activeSubjectId;
 
@@ -353,19 +366,20 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
       ipAddress: '127.0.0.1' // Simulated IP address
     };
 
-    let url = `http://localhost:8082/api/attendance/check-in`;
+    let apiPath = '/api/attendance/check-in';
     if (mode === 'check-out') {
-      url = `http://localhost:8082/api/attendance/check-out`;
+      apiPath = '/api/attendance/check-out';
     } else if (mode === 'verify') {
-      url = `http://localhost:8082/api/attendance/verify-biometrics`;
+      apiPath = '/api/attendance/verify-biometrics';
     }
 
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(apiPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+
 
       const data = await res.json();
 
@@ -377,7 +391,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
           setResultDetails(`Scanned face matches ${data.employee.name} (${data.employee.employeeId}), but login target is ${verificationTarget}. Access denied.`);
           setPadlockState('error');
           playErrorTone();
-          
+
           setTimeout(() => {
             setScanning(false);
             setVerificationResult(null);
@@ -402,7 +416,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
         setTimeout(() => {
           setPadlockState('unlocked');
         }, 500);
-        
+
         // callback to refresh logs or notifications
         setTimeout(() => {
           setScanning(false);
@@ -411,6 +425,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
           setCapturedImage(null);
           setScanStatus('READY TO SCAN');
           setPadlockState('locked');
+          setMode(prev => prev === 'check-in' ? 'check-out' : 'check-in');
           onScanComplete && onScanComplete(data);
         }, 3000);
       } else {
@@ -419,7 +434,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
         setResultDetails('Biometric access verification denied. Log added to system security audits.');
         setPadlockState('error');
         playErrorTone();
-        
+
         setTimeout(() => {
           setScanning(false);
           setVerificationResult(null);
@@ -436,7 +451,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
       setResultDetails('Server not responding. Please check backend connection.');
       setPadlockState('error');
       playErrorTone();
-      
+
       setTimeout(() => {
         setScanning(false);
         setVerificationResult(null);
@@ -448,11 +463,11 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
     }
   };
 
-  const resolvedEmpId = activeSubjectId === 'SAVED' 
+  const resolvedEmpId = activeSubjectId === 'SAVED'
     ? (localStorage.getItem('simulated_face_employee_id') || 'UNKNOWN')
     : activeSubjectId;
-  const activeSubjectName = activeSubjectId === 'SAVED' 
-    ? (localStorage.getItem('simulated_face_name') || 'Saved Biometrics') 
+  const activeSubjectName = activeSubjectId === 'SAVED'
+    ? (localStorage.getItem('simulated_face_name') || 'Saved Biometrics')
     : (employees.find(e => e.employeeId === activeSubjectId)?.name || 'Stranger');
 
   const getHudClass = () => {
@@ -492,7 +507,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
       } else {
         setCalibProgress(progressVal);
         playSound(600 + progressVal * 2, 0.04, 'sine', 0.02);
-        
+
         setCalibLogs(prev => {
           const newLogs = ['[SYSTEM]: INITIATING BIO-SENSOR DIAGNOSTIC...'];
           if (progressVal > 15) newLogs.push('[SYSTEM]: TESTING IMAGE SHARPNESS SENSOR... OK');
@@ -511,28 +526,37 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
       {/* 1. Mode selection tab bar (only show if verificationTarget is not present, i.e., not in portal-verify mode) */}
       {!verificationTarget && (
         <div style={styles.tabToggleWrapper}>
-          <button 
-            style={{
-              ...styles.toggleBtn,
-              background: mode === 'check-in' ? 'var(--color-gold)' : 'var(--color-bg-card)',
-              color: mode === 'check-in' ? '#ffffff' : 'var(--color-text-primary)',
-              borderColor: mode === 'check-in' ? 'var(--color-gold)' : 'var(--color-border)'
-            }}
-            onClick={() => { setMode('check-in'); playSound(500, 0.1); }}
-          >
-            Check-In
-          </button>
-          <button 
-            style={{
-              ...styles.toggleBtn,
-              background: mode === 'check-out' ? 'var(--color-gold)' : 'var(--color-bg-card)',
-              color: mode === 'check-out' ? '#ffffff' : 'var(--color-text-primary)',
-              borderColor: mode === 'check-out' ? 'var(--color-gold)' : 'var(--color-border)'
-            }}
-            onClick={() => { setMode('check-out'); playSound(500, 0.1); }}
-          >
-            Check-Out
-          </button>
+          {mode === 'check-in' ? (
+            <button
+              style={{
+                ...styles.toggleBtn,
+                background: 'var(--color-gold)',
+                color: '#ffffff',
+                borderColor: 'var(--color-gold)',
+                cursor: 'default',
+                width: '100%',
+                fontWeight: 'bold',
+                letterSpacing: '1px'
+              }}
+            >
+              Check-In Mode
+            </button>
+          ) : (
+            <button
+              style={{
+                ...styles.toggleBtn,
+                background: 'var(--color-gold)',
+                color: '#ffffff',
+                borderColor: 'var(--color-gold)',
+                cursor: 'default',
+                width: '100%',
+                fontWeight: 'bold',
+                letterSpacing: '1px'
+              }}
+            >
+              Check-Out Mode
+            </button>
+          )}
         </div>
       )}
 
@@ -553,12 +577,12 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
         {/* Video feed or fallback */}
         {stream ? (
           <div style={styles.feedWrapper}>
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              style={styles.videoFeed} 
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={styles.videoFeed}
             />
             {/* Draw HUD SVG overlay for face detection scanner styling */}
             <div style={styles.hudOverlay}>
@@ -568,16 +592,16 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
                 <path d="M 80 10 L 90 10 L 90 20" fill="none" stroke="var(--color-gold)" strokeWidth="1" />
                 <path d="M 10 80 L 10 90 L 20 90" fill="none" stroke="var(--color-gold)" strokeWidth="1" />
                 <path d="M 80 90 L 90 90 L 90 80" fill="none" stroke="var(--color-gold)" strokeWidth="1" />
-                
+
                 {/* Scanning reticle / grid line */}
                 {scanning && (
-                  <line 
-                    x1="10" 
-                    y1={progress} 
-                    x2="90" 
-                    y2={progress} 
-                    stroke="var(--color-gold)" 
-                    strokeWidth="0.8" 
+                  <line
+                    x1="10"
+                    y1={progress}
+                    x2="90"
+                    y2={progress}
+                    stroke="var(--color-gold)"
+                    strokeWidth="0.8"
                     opacity="0.8"
                     style={{ transition: 'y 0.1s linear' }}
                   />
@@ -594,8 +618,8 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
             <div style={styles.fallbackSubtext} className="mono-font">
               {cameraError ? 'Please check your permissions and device connection.' : 'Biometric capture stream is inactive. Click below to start.'}
             </div>
-            <button 
-              onClick={startCamera} 
+            <button
+              onClick={startCamera}
               style={{ ...styles.scanBtn, background: 'var(--color-gold)', width: 'auto', marginTop: '16px', padding: '10px 20px' }}
               className="mono-font"
             >
@@ -606,7 +630,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
 
         {/* Verification Result Overlay */}
         {verificationResult && (
-          <div 
+          <div
             style={{
               ...styles.resultOverlay,
               backgroundColor: verificationResult === 'success' ? 'rgba(6, 78, 59, 0.95)' : 'rgba(153, 27, 27, 0.95)',
@@ -634,11 +658,11 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
       {/* 3. Control & Progress Panel */}
       <div style={styles.controlBox} className="cyber-panel">
         <div style={styles.statusLine} className="mono-font">
-          <span 
-            style={{ 
-              ...styles.dotIndicator, 
-              background: scanning ? 'var(--color-gold)' : (stream ? 'var(--color-green)' : 'var(--color-text-muted)') 
-            }} 
+          <span
+            style={{
+              ...styles.dotIndicator,
+              background: scanning ? 'var(--color-gold)' : (stream ? 'var(--color-green)' : 'var(--color-text-muted)')
+            }}
           />
           <span>{scanStatus}</span>
         </div>
@@ -658,12 +682,12 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
         {/* Progress Bar */}
         {scanning && (
           <div style={styles.progressBarWrapper}>
-            <div 
-              style={{ 
-                ...styles.progressBar, 
+            <div
+              style={{
+                ...styles.progressBar,
                 width: `${progress}%`,
                 background: 'var(--color-gold)'
-              }} 
+              }}
             />
             <span style={styles.progressText} className="mono-font">
               {progress}% ANALYZING
@@ -673,7 +697,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
 
         {/* Action Button */}
         {stream && !scanning && (
-          <button 
+          <button
             onClick={handleStartScan}
             style={{
               ...styles.scanBtn,
@@ -687,8 +711,8 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
 
         {/* Console / Simulation Settings */}
         <div style={styles.consolePanel} className="cyber-panel">
-          <div 
-            style={styles.consoleHeader} 
+          <div
+            style={styles.consoleHeader}
             onClick={() => setShowConsole(!showConsole)}
           >
             <span className="mono-font" style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-primary)' }}>
@@ -705,7 +729,7 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
               <div style={styles.controlRow}>
                 <div style={{ ...styles.inputGroup, flex: 1 }}>
                   <label style={styles.inputLabel} className="mono-font">Subject Profile</label>
-                  <select 
+                  <select
                     style={styles.selectField}
                     value={activeSubjectId}
                     onChange={(e) => setActiveSubjectId(e.target.value)}
@@ -727,11 +751,11 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
 
               <div style={styles.controlRow}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     id="spoof_toggle"
-                    checked={spoofMode} 
-                    onChange={(e) => setSpoofMode(e.target.checked)} 
+                    checked={spoofMode}
+                    onChange={(e) => setSpoofMode(e.target.checked)}
                   />
                   <label htmlFor="spoof_toggle" style={{ ...styles.inputLabel, cursor: 'pointer' }} className="mono-font">
                     Simulate Photo Spoof (Liveness Fail)
@@ -739,11 +763,11 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     id="blur_toggle"
-                    checked={simulateBlur} 
-                    onChange={(e) => setSimulateBlur(e.target.checked)} 
+                    checked={simulateBlur}
+                    onChange={(e) => setSimulateBlur(e.target.checked)}
                   />
                   <label htmlFor="blur_toggle" style={{ ...styles.inputLabel, cursor: 'pointer' }} className="mono-font">
                     Simulate Blurry Lens (Resolution Fail)
@@ -1282,4 +1306,6 @@ const styles = {
     letterSpacing: '0.5px'
   }
 };
+
+
 

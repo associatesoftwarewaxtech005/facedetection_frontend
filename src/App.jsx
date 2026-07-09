@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from './config/api';
 import { Home, ScanFace, Fingerprint, Volume2, VolumeX, ShieldAlert, ShieldCheck, LockKeyhole, Sun, Moon, Users, BarChart3, Settings, Shield } from 'lucide-react';
 import HomeTab from './pages/Home';
 import ScanTab from './pages/Scan';
@@ -7,7 +8,8 @@ import AdminPanel from './pages/Admin';
 import agentAvatar from './assets/agent_avatar.png';
 import './App.css';
 
-const API_BASE = 'http://localhost:8082/api';
+
+
 
 export default function App() {
   const [tab, setTab] = useState('home'); // 'home', 'scan', 'logs', 'user', 'admin'
@@ -20,7 +22,7 @@ export default function App() {
 
   const handleEmployeeLogout = () => {
     if (loggedInEmployee) {
-      fetch('http://localhost:8082/api/employee/logout', {
+      apiFetch('/api/employee/logout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -72,7 +74,7 @@ export default function App() {
     if (mode === 'verify') {
       if (scanData && scanData.employee) {
         // Call backend login to record session in database logs
-        fetch('http://localhost:8082/api/employee/login', {
+        apiFetch('/api/employee/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -117,7 +119,7 @@ export default function App() {
             onLogout={handleEmployeeLogout}
             onLoginSuccess={(empData) => {
               // Record session
-              fetch('http://localhost:8082/api/employee/login', {
+              apiFetch('/api/employee/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -168,13 +170,6 @@ export default function App() {
             <span>Biometric Scanner</span>
           </button>
 
-          <button 
-            className={`sidebar-btn ${tab === 'user' ? 'active' : ''}`}
-            onClick={() => setTab('user')}
-          >
-            <Fingerprint size={16} />
-            <span>Login/Logout Portal</span>
-          </button>
 
           <button 
             className={`sidebar-btn ${tab === 'users' ? 'active' : ''}`}
@@ -281,13 +276,6 @@ export default function App() {
             <span>Home</span>
           </button>
 
-          <button 
-            className={`nav-item ${tab === 'user' ? 'active' : ''}`}
-            onClick={() => setTab('user')}
-          >
-            <Fingerprint className="nav-icon" />
-            <span>Portal</span>
-          </button>
 
           <button 
             className={`nav-item ${tab === 'users' ? 'active' : ''}`}
@@ -335,3 +323,5 @@ const styles = {
     objectFit: 'cover'
   }
 };
+
+
