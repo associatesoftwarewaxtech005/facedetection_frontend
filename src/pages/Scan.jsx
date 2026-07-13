@@ -1017,12 +1017,15 @@ const styles = {
   },
   controlRow: {
     display: 'flex',
-    gap: '16px'
+    gap: '16px',
+    flexWrap: 'wrap'
   },
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px'
+    gap: '6px',
+    minWidth: '180px',
+    flex: 1
   },
   inputLabel: {
     fontSize: '9px',

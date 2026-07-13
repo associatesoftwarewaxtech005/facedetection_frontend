@@ -228,7 +228,6 @@ export default function TerminalOverlay({ isOpen, onClose, soundEnabled }) {
           onKeyDown={handleKeyDown}
           autoFocus
           disabled={isDecrypting}
-          placeholder="type help..."
         />
         <Play size={10} style={styles.inputIcon} />
       </div>

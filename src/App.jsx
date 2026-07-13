@@ -5,7 +5,7 @@ import HomeTab from './pages/Home';
 import ScanTab from './pages/Scan';
 import UserTab from './pages/User';
 import AdminPanel from './pages/Admin';
-import agentAvatar from './assets/agent_avatar.png';
+import adminAvatar from './assets/avatar_admin.png';
 import './App.css';
 
 
@@ -256,7 +256,7 @@ export default function App() {
 
             {/* Rounded Admin profile picture matching mock */}
             <div style={styles.avatarWrapper}>
-              <img src={agentAvatar} alt="Admin Profile" style={styles.avatarImg} />
+              <img src={adminAvatar} alt="Admin Profile" style={styles.avatarImg} />
             </div>
           </div>
         </header>

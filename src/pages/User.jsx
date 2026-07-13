@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../config/api';
 import { Fingerprint, Search, Shield, ShieldCheck, Mail, Phone, Calendar, Clock, Award } from 'lucide-react';
-import agentAvatar from '../assets/agent_avatar.png';
+import { ProfileAvatar } from '../config/avatar';
 
 const formatWorkingHours = (decimalHours) => {
   if (decimalHours === null || decimalHours === undefined) return '0h 0m';
@@ -232,8 +232,8 @@ export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) 
             </div>
 
             <div style={styles.profileCard}>
-              <div style={styles.avatarWrapper}>
-                <img src={agentAvatar} alt={employee.name} style={styles.avatarImage} />
+              <div style={{ position: 'relative' }}>
+                <ProfileAvatar employee={employee} size={84} style={{ borderRadius: '16px' }} />
                 <div style={styles.avatarSubBadge}>
                   <Fingerprint size={14} style={{ color: 'var(--color-bg-deep)' }} />
                 </div>
@@ -324,19 +324,18 @@ export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) 
               <div style={styles.loginInputWrapper}>
                 <input 
                   type="text" 
-                  placeholder="ENTER EMPLOYEE ID (e.g. EMP005)" 
                   value={loginInputId}
-                  onChange={(e) => setLoginInputId(e.target.value)}
+                  onChange={(e) => setLoginInputId(e.target.value.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase())}
                   style={styles.loginInput}
                   className="mono-font"
                   disabled={loading}
+                  maxLength={10}
                 />
               </div>
 
               <div style={styles.loginInputWrapper}>
                 <input 
                   type="text" 
-                  placeholder="ENTER PASSCODE (●●●●)" 
                   value={loginPasscode}
                   readOnly
                   style={{ ...styles.loginInput, WebkitTextSecurity: 'disc', letterSpacing: '3px' }}
@@ -587,7 +586,8 @@ const styles = {
     padding: '20px',
     display: 'flex',
     gap: '20px',
-    alignItems: 'center'
+    alignItems: 'center',
+    flexWrap: 'wrap'
   },
   avatarWrapper: {
     position: 'relative',
@@ -653,7 +653,7 @@ const styles = {
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: '16px'
   },
   metricCard: {

@@ -4,6 +4,7 @@ import {
   Users, Calendar, BarChart3, Settings, ShieldAlert, Plus, Trash2, Edit2, LogOut, Check, X, 
   Camera, Download, Printer, ShieldCheck, Mail, Phone, Clock, AlertTriangle, Eye, Terminal, FileClock 
 } from 'lucide-react';
+import { ProfileAvatar } from '../config/avatar';
 
 const formatWorkingHours = (decimalHours) => {
   if (decimalHours === null || decimalHours === undefined) return '0h 0m';
@@ -78,6 +79,20 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editRecordStatus, setEditRecordStatus] = useState('PRESENT');
+
+  // Custom confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: 'CONFIRM ACTION',
+    message: '',
+    onConfirm: null
+  });
+
+  // Clear search filter when tab changes
+  useEffect(() => {
+    setSearchQuery('');
+    setFilterStatus('ALL');
+  }, [activeTab]);
 
   // Analytics states
   const [analytics, setAnalytics] = useState({
@@ -202,6 +217,29 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
     e.preventDefault();
     if (!empIdInput.trim() || !empName.trim()) return;
 
+    // Strict Javascript validations
+    const empIdRegex = /^[a-zA-Z]{2}\d+$/;
+    if (!empIdRegex.test(empIdInput) || empIdInput.length < 3) {
+      alert("Employee ID must start with exactly 2 letters followed only by numbers (e.g. EP10005).");
+      return;
+    }
+
+    if (/\d/.test(empPos)) {
+      alert("Position cannot contain numbers or zero.");
+      return;
+    }
+
+    if (empPhone.replace(/\D/g, '').length !== 10) {
+      alert("Phone number must be exactly 10 digits.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(empEmail)) {
+      alert("Please enter a valid email address (e.g. name@axon.io).");
+      return;
+    }
+
     const payload = {
       employeeId: empIdInput,
       name: empName,
@@ -245,8 +283,8 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
     setEditEmpName(emp.name);
     setEditEmpDept(emp.department);
     setEditEmpPos(emp.position);
-    setEditEmpEmail(emp.email);
-    setEditEmpPhone(emp.phoneNumber);
+    setEditEmpEmail(emp.email || '');
+    setEditEmpPhone(emp.phoneNumber || '');
     setEditEmpStatus(emp.status);
     setEditEmpRole(emp.role);
     setEditEmpPasscode(emp.passcode || '');
@@ -254,22 +292,44 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
 
   const saveEmployeeEdit = async (id) => {
     if (!editEmpName.trim()) return;
+
+    // Strict Javascript validations
+    if (/\d/.test(editEmpPos)) {
+      alert("Position cannot contain numbers or zero.");
+      return;
+    }
+
+    if (editEmpPhone.replace(/\D/g, '').length !== 10) {
+      alert("Phone number must be exactly 10 digits.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editEmpEmail)) {
+      alert("Please enter a valid email address (e.g. name@axon.io).");
+      return;
+    }
+
     try {
+      const payload = {
+        name: editEmpName,
+        department: editEmpDept,
+        position: editEmpPos,
+        email: editEmpEmail,
+        phoneNumber: editEmpPhone,
+        status: editEmpStatus,
+        role: editEmpRole,
+        passcode: editEmpPasscode
+      };
       const res = await apiFetch(`/api/admin/employees/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editEmpName,
-          department: editEmpDept,
-          position: editEmpPos,
-          email: editEmpEmail,
-          phoneNumber: editEmpPhone,
-          status: editEmpStatus,
-          role: editEmpRole,
-          passcode: editEmpPasscode
-        })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
+        const updatedEmp = await res.json();
+        // Optimistic state update
+        setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, ...updatedEmp } : emp));
         setEditingEmpId(null);
         loadDashboardData();
       }
@@ -278,18 +338,26 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
     }
   };
 
-  const handleDeleteEmployee = async (id) => {
-    if (!window.confirm("ARE YOU SURE YOU WANT TO DELETE THIS EMPLOYEE AND ALL ASSOCIATED BIOMETRICS/LOGS?")) return;
-    try {
-      const res = await apiFetch(`/api/admin/employees/${id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        loadDashboardData();
+  const handleDeleteEmployee = (id) => {
+    const emp = employees.find(e => e.id === id);
+    setConfirmModal({
+      isOpen: true,
+      title: 'DELETE STAFF MEMBER',
+      message: `ARE YOU SURE YOU WANT TO PERMANENTLY DELETE ${emp?.name.toUpperCase()} (${emp?.employeeId}) AND ALL ASSOCIATED BIOMETRICS/LOGS?`,
+      onConfirm: async () => {
+        try {
+          const res = await apiFetch(`/api/admin/employees/${id}`, {
+            method: 'DELETE'
+          });
+          if (res.ok) {
+            setEmployees(prev => prev.filter(e => e.id !== id));
+            loadDashboardData();
+          }
+        } catch (err) {
+          console.error(err);
+        }
       }
-    } catch (err) {
-      console.error(err);
-    }
+    });
   };
 
   // ==========================================
@@ -409,7 +477,13 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
         })
       });
       if (res.ok) {
+        const updatedRec = await res.json();
+        // Optimistic local state update
+        setAttendance(prev => prev.map(rec => rec.id === id ? updatedRec : rec));
         setEditingRecordId(null);
+        setEditCheckIn('');
+        setEditCheckOut('');
+        setEditRecordStatus('PRESENT');
         loadDashboardData();
       }
     } catch (err) {
@@ -419,10 +493,15 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
 
   // EXPORT EXCEL (CSV Format)
   const exportToCSV = () => {
+    if (filteredAttendance.length === 0) {
+      alert("No data available to download.");
+      return;
+    }
+
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Date,Employee ID,Name,Department,Check-In,Check-Out,Hours Worked,Status,Liveness Verified\n";
     
-    attendance.forEach(rec => {
+    filteredAttendance.forEach(rec => {
       const row = [
         rec.date,
         rec.employee.employeeId,
@@ -447,10 +526,21 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
   };
 
   const exportSessionsToCSV = () => {
+    const q = searchQuery.toLowerCase();
+    const filteredSessions = employeeSessions.filter(sess => {
+      return (sess.employeeName && sess.employeeName.toLowerCase().includes(q)) || 
+             (sess.employeeId && sess.employeeId.toLowerCase().includes(q));
+    });
+
+    if (filteredSessions.length === 0) {
+      alert("No data available to download.");
+      return;
+    }
+
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Timestamp,Employee ID,Employee Name,Action\n";
     
-    employeeSessions.forEach(sess => {
+    filteredSessions.forEach(sess => {
       const row = [
         sess.timestamp,
         sess.employeeId,
@@ -470,10 +560,22 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
   };
 
   const exportAuditsToCSV = () => {
+    const q = searchQuery.toLowerCase();
+    const filteredAudits = systemAudits.filter(aud => {
+      return (aud.message && aud.message.toLowerCase().includes(q)) || 
+             (aud.type && aud.type.toLowerCase().includes(q)) ||
+             (aud.timestamp && aud.timestamp.toLowerCase().includes(q));
+    });
+
+    if (filteredAudits.length === 0) {
+      alert("No data available to download.");
+      return;
+    }
+
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Timestamp,Log Type,Message\n";
     
-    systemAudits.forEach(aud => {
+    filteredAudits.forEach(aud => {
       const row = [
         aud.timestamp,
         aud.type,
@@ -491,26 +593,127 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
     document.body.removeChild(link);
   };
 
-  const handleDeleteLog = async (id) => {
-    if (!window.confirm('ARE YOU SURE YOU WANT TO PURGE THIS LOG ENTRY?')) return;
-    try {
-      const res = await apiFetch(`/api/logs/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setSystemAudits(prev => prev.filter(log => log.id !== id));
-      } else {
-        alert('FAILED TO PURGE LOG.');
+  const handleDeleteLog = (id) => {
+    const log = systemAudits.find(l => l.id === id);
+    setConfirmModal({
+      isOpen: true,
+      title: 'PURGE AUDIT LOG ENTRY',
+      message: `ARE YOU SURE YOU WANT TO PERMANENTLY DELETE THE AUDIT LOG ENTRY FROM [${log?.timestamp}]?`,
+      onConfirm: async () => {
+        try {
+          const res = await apiFetch(`/api/logs/${id}`, {
+            method: 'DELETE',
+          });
+          if (res.ok) {
+            setSystemAudits(prev => prev.filter(log => log.id !== id));
+          } else {
+            alert('FAILED TO PURGE LOG.');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('DATABASE COMMUNICATION ERROR.');
+        }
       }
-    } catch (err) {
-      console.error(err);
-      alert('DATABASE COMMUNICATION ERROR.');
-    }
+    });
   };
 
   // EXPORT PDF (Browser Printable layout)
   const exportToPDF = () => {
-    window.print();
+    if (filteredAttendance.length === 0) {
+      alert("No data available to download.");
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to generate the PDF report.");
+      return;
+    }
+
+    let html = `
+      <html>
+        <head>
+          <title>Attendance Report - ${LocalDateString()}</title>
+          <style>
+            body { font-family: 'Inter', system-ui, sans-serif; padding: 40px; color: #0F172A; }
+            .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; border-bottom: 2px solid #E2E8F0; padding-bottom: 16px; }
+            h1 { font-size: 22px; margin: 0; color: #0F172A; text-transform: uppercase; letter-spacing: 1px; }
+            .meta { font-size: 11px; color: #64748B; line-height: 1.6; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            th, td { border: 1px solid #E2E8F0; padding: 10px 12px; text-align: left; font-size: 11px; }
+            th { background-color: #F8FAFC; font-weight: bold; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+            tr:nth-child(even) td { background-color: #F9FAFB; }
+            .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold; text-transform: uppercase; }
+            .badge-present { background-color: #E6F4EA; color: #137333; }
+            .badge-late { background-color: #FEF7E0; color: #B06000; }
+            .badge-half-day { background-color: #F1F3F4; color: #5F6368; }
+            .badge-absent { background-color: #FCE8E6; color: #C5221F; }
+          </style>
+        </head>
+        <body>
+          <div class="header-container">
+            <div>
+              <h1>Security Pro - Attendance Report</h1>
+              <div class="meta" style="margin-top: 6px;">
+                Generated: ${new Date().toLocaleString()}<br/>
+                Filter Category: ${filterStatus.toUpperCase()}
+              </div>
+            </div>
+            <div class="meta" style="text-align: right;">
+              Total Records: ${filteredAttendance.length}<br/>
+              Report Type: SECURE SYSTEMS
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Check-In</th>
+                <th>Check-Out</th>
+                <th>Hours</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    filteredAttendance.forEach(rec => {
+      let badgeClass = 'badge-present';
+      if (rec.status === 'LATE') badgeClass = 'badge-late';
+      else if (rec.status === 'HALF_DAY') badgeClass = 'badge-half-day';
+      else if (rec.status === 'ABSENT') badgeClass = 'badge-absent';
+
+      html += `
+        <tr>
+          <td><strong>${rec.date}</strong></td>
+          <td>${rec.employee.employeeId}</td>
+          <td>${rec.employee.name}</td>
+          <td>${rec.employee.department}</td>
+          <td>${rec.checkInTime ? rec.checkInTime.substring(0, 5) : '--:--'}</td>
+          <td>${rec.checkOutTime ? rec.checkOutTime.substring(0, 5) : '--:--'}</td>
+          <td>${rec.workingHours ? rec.workingHours.toFixed(2) : '0.00'}</td>
+          <td><span class="badge ${badgeClass}">${rec.status.replace('_', ' ')}</span></td>
+        </tr>
+      `;
+    });
+
+    html += `
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   const LocalDateString = () => {
@@ -608,6 +811,8 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
 
   return (
     <div style={styles.container}>
+      {/* Sticky Header + Tab Bar wrapper */}
+      <div style={{ flexShrink: 0, padding: '24px 24px 0 24px' }}>
       {/* Header Info */}
       <div style={styles.buttonBar}>
         <div style={styles.sessionStatus} className="mono-font">
@@ -714,7 +919,10 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
           <span>SECURITY LOGS</span>
         </button>
       </div>
+      </div>{/* end sticky header wrapper */}
 
+      {/* Scrollable Tab Content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px 24px 24px' }}>
       {/* Dynamic Tab Panels */}
       
       {/* 1. EMPLOYEES TAB */}
@@ -727,7 +935,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                 <div style={styles.cardHeaderPlate} className="mono-font">
                   <Camera size={12} />
                   <span>BIOMETRIC FACE REGISTER // {cameraEmployee.name}</span>
-                  <button onClick={stopCamera} style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', marginLeft: 'auto' }}>
+                  <button onClick={stopCamera} style={{ background: 'none', border: 'none', color: 'var(--color-text-primary)', cursor: 'pointer', marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
                     <X size={14} />
                   </button>
                 </div>
@@ -796,32 +1004,43 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                   <label style={styles.inputLabel} className="mono-font">EMPLOYEE ID</label>
                   <input 
                     type="text" 
-                    placeholder="e.g. EMP005"
                     style={{
                       ...styles.inputField,
                       border: fId ? '1px solid var(--color-gold)' : 'none',
                       borderBottom: fId ? '1px solid var(--color-gold)' : '1px solid var(--color-border-bright)'
                     }}
                     value={empIdInput}
-                    onChange={(e) => setEmpIdInput(e.target.value)}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+                      let formatted = '';
+                      for (let i = 0; i < clean.length; i++) {
+                        const char = clean[i];
+                        if (i < 2) {
+                          if (/[a-zA-Z]/.test(char)) formatted += char.toUpperCase();
+                        } else {
+                          if (/[0-9]/.test(char)) formatted += char;
+                        }
+                      }
+                      setEmpIdInput(formatted);
+                    }}
                     onFocus={() => setFId(true)}
                     onBlur={() => setFId(false)}
                     className="mono-font"
                     required
+                    maxLength={10}
                   />
                 </div>
                 <div style={{ ...styles.inputGroup, flex: 2 }}>
                   <label style={styles.inputLabel} className="mono-font">FULL NAME</label>
                   <input 
                     type="text" 
-                    placeholder="ENTER NAME..."
                     style={{
                       ...styles.inputField,
                       border: fName ? '1px solid var(--color-gold)' : 'none',
                       borderBottom: fName ? '1px solid var(--color-gold)' : '1px solid var(--color-border-bright)'
                     }}
                     value={empName}
-                    onChange={(e) => setEmpName(e.target.value)}
+                    onChange={(e) => setEmpName(e.target.value.replace(/[^a-zA-Z\s.'-]/g, ''))}
                     onFocus={() => setFName(true)}
                     onBlur={() => setFName(false)}
                     className="mono-font"
@@ -850,16 +1069,15 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                   <label style={styles.inputLabel} className="mono-font">POSITION</label>
                   <input 
                     type="text" 
-                    placeholder="e.g. Designer"
                     style={{
                       ...styles.inputField,
                       border: fPos ? '1px solid var(--color-gold)' : 'none',
                       borderBottom: fPos ? '1px solid var(--color-gold)' : '1px solid var(--color-border-bright)'
                     }}
                     value={empPos}
-                    onChange={(e) => setEmpPos(e.target.value)}
+                    onChange={(e) => setEmpPos(e.target.value.replace(/[^a-zA-Z\s.\-/()]/g, ''))}
                     onFocus={() => setFPos(true)}
-                    onBlur={() => fPos(false)}
+                    onBlur={() => setFPos(false)}
                     className="mono-font"
                     required
                   />
@@ -871,14 +1089,13 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                   <label style={styles.inputLabel} className="mono-font">EMAIL ADDRESS</label>
                   <input 
                     type="email" 
-                    placeholder="alice@axon.io"
                     style={{
                       ...styles.inputField,
                       border: fEmail ? '1px solid var(--color-gold)' : 'none',
                       borderBottom: fEmail ? '1px solid var(--color-gold)' : '1px solid var(--color-border-bright)'
                     }}
                     value={empEmail}
-                    onChange={(e) => setEmpEmail(e.target.value)}
+                    onChange={(e) => setEmpEmail(e.target.value.replace(/[^a-zA-Z0-9@._\-+]/g, ''))}
                     onFocus={() => setFEmail(true)}
                     onBlur={() => setFEmail(false)}
                     className="mono-font"
@@ -889,18 +1106,18 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                   <label style={styles.inputLabel} className="mono-font">PHONE NUMBER</label>
                   <input 
                     type="text" 
-                    placeholder="+1-555-0100"
                     style={{
                       ...styles.inputField,
                       border: fPhone ? '1px solid var(--color-gold)' : 'none',
                       borderBottom: fPhone ? '1px solid var(--color-gold)' : '1px solid var(--color-border-bright)'
                     }}
                     value={empPhone}
-                    onChange={(e) => setEmpPhone(e.target.value)}
+                    onChange={(e) => setEmpPhone(e.target.value.replace(/\D/g, ''))}
                     onFocus={() => setFPhone(true)}
                     onBlur={() => setFPhone(false)}
                     className="mono-font"
                     required
+                    maxLength={10}
                   />
                 </div>
               </div>
@@ -935,7 +1152,6 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                   <label style={styles.inputLabel} className="mono-font">PASSWORD / PIN</label>
                   <input 
                     type="text" 
-                    placeholder="e.g. 1234"
                     style={{
                       ...styles.inputField,
                       border: fPasscode ? '1px solid var(--color-gold)' : 'none',
@@ -965,29 +1181,39 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
             
             <div style={styles.dbList}>
               {employees.map((emp) => (
-                <div key={emp.id} style={styles.dbRow}>
+                <div key={emp.id} style={editingEmpId === emp.id ? { ...styles.dbRow, flexDirection: 'column', alignItems: 'stretch', height: 'auto', minHeight: 'auto', padding: '16px' } : styles.dbRow}>
                   {editingEmpId === emp.id ? (
-                    <div style={styles.editRowContainer}>
-                      <div style={{ ...styles.editInputs, flexDirection: 'column', gap: '6px' }}>
-                        <input 
-                          type="text" 
-                          style={{ ...styles.inputField, margin: 0 }}
-                          value={editEmpName}
-                          onChange={(e) => setEditEmpName(e.target.value)}
-                          className="mono-font"
-                        />
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '10px', padding: '10px 0' }}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">FULL NAME</span>
                           <input 
                             type="text" 
-                            style={{ ...styles.inputField, margin: 0, flex: 1 }}
-                            value={editEmpPos}
-                            onChange={(e) => setEditEmpPos(e.target.value)}
+                            style={{ ...styles.inputField, margin: 0 }}
+                            value={editEmpName}
+                            onChange={(e) => setEditEmpName(e.target.value.replace(/[^a-zA-Z\s.'-]/g, ''))}
                             className="mono-font"
                           />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">POSITION</span>
+                          <input 
+                            type="text" 
+                            style={{ ...styles.inputField, margin: 0 }}
+                            value={editEmpPos}
+                            onChange={(e) => setEditEmpPos(e.target.value.replace(/[^a-zA-Z\s.\-/()]/g, ''))}
+                            className="mono-font"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">DEPARTMENT</span>
                           <select 
                             value={editEmpDept} 
                             onChange={(e) => setEditEmpDept(e.target.value)}
-                            style={{ ...styles.selectField, flex: 1 }}
+                            style={{ ...styles.selectField, width: '100%' }}
                             className="mono-font"
                           >
                             <option value="Engineering">Engineering</option>
@@ -997,46 +1223,83 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                             <option value="Marketing">Marketing</option>
                           </select>
                         </div>
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">ROLE</span>
+                          <select 
+                            value={editEmpRole} 
+                            onChange={(e) => setEditEmpRole(e.target.value)}
+                            style={{ ...styles.selectField, width: '100%' }}
+                            className="mono-font"
+                          >
+                            <option value="EMPLOYEE">EMPLOYEE</option>
+                            <option value="MANAGER">MANAGER</option>
+                            <option value="ADMIN">ADMIN</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">EMAIL ADDRESS</span>
                           <input 
                             type="email" 
-                            style={{ ...styles.inputField, margin: 0, flex: 2 }}
+                            style={{ ...styles.inputField, margin: 0 }}
                             value={editEmpEmail}
-                            onChange={(e) => setEditEmpEmail(e.target.value)}
+                            onChange={(e) => setEditEmpEmail(e.target.value.replace(/[^a-zA-Z0-9@._\-+]/g, ''))}
                             className="mono-font"
                           />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">PHONE NUMBER</span>
+                          <input 
+                            type="text" 
+                            style={{ ...styles.inputField, margin: 0 }}
+                            value={editEmpPhone}
+                            onChange={(e) => setEditEmpPhone(e.target.value.replace(/\D/g, ''))}
+                            className="mono-font"
+                            maxLength={10}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">STATUS</span>
                           <select 
                             value={editEmpStatus} 
                             onChange={(e) => setEditEmpStatus(e.target.value)}
-                            style={{ ...styles.selectField, flex: 1 }}
+                            style={{ ...styles.selectField, width: '100%' }}
                             className="mono-font"
                           >
                             <option value="ACTIVE">ACTIVE</option>
                             <option value="INACTIVE">INACTIVE</option>
                           </select>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">PASSWORD / PIN</span>
                           <input 
                             type="text" 
-                            placeholder="PASSWORD / PIN"
-                            style={{ ...styles.inputField, margin: 0, flex: 1 }}
+                            style={{ ...styles.inputField, margin: 0 }}
                             value={editEmpPasscode}
                             onChange={(e) => setEditEmpPasscode(e.target.value.replace(/\D/g, '').substring(0, 6))}
                             className="mono-font"
-                            required
                           />
                         </div>
                       </div>
-                      <div style={styles.editActions}>
-                        <button style={styles.saveBtn} onClick={() => saveEmployeeEdit(emp.id)} title="Save changes">
-                          <Check size={14} />
-                        </button>
+
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '6px', justifyContent: 'flex-end' }}>
                         <button style={styles.cancelBtn} onClick={() => setEditingEmpId(null)} title="Cancel">
-                          <X size={14} />
+                          Cancel
+                        </button>
+                        <button style={styles.saveBtn} onClick={() => saveEmployeeEdit(emp.id)} title="Save changes">
+                          Save Changes
                         </button>
                       </div>
                     </div>
                   ) : (
                     <>
                       <div style={styles.logLeft}>
+                        <ProfileAvatar employee={emp} size={38} style={{ borderRadius: '10px' }} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ color: 'var(--color-gold)', fontWeight: 'bold' }} className="mono-font">
@@ -1087,11 +1350,10 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
       {/* 2. ATTENDANCE LEDGER TAB */}
       {activeTab === 'attendance' && (
         <div className="cyber-panel" style={{ ...styles.panelSection, flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <div style={styles.cardHeaderPlate} className="mono-font">
-            <span>ATTENDANCE LEDGER DATABASE</span>
-            
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', padding: '12px 16px', background: 'var(--color-bg-card-hover)', borderBottom: '1px solid var(--color-border)' }} className="mono-font">
+            <span style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--color-text-primary)', flex: 1, minWidth: '160px' }}>ATTENDANCE LEDGER DATABASE</span>
             {/* Export options */}
-            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
               <button onClick={exportToCSV} style={styles.exportBtn} className="mono-font" title="Export report to Microsoft Excel CSV file">
                 <Download size={12} />
                 <span>EXCEL</span>
@@ -1104,103 +1366,133 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
           </div>
 
           {/* Search/Filter Toolbar */}
-          <div style={styles.ledgerFilterBar}>
-            <input 
-              type="text" 
-              placeholder="Filter by name, ID, or department..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ ...styles.inputField, margin: 0, flex: 2 }}
-              className="mono-font"
-            />
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Search Input - full width */}
+            <div style={{ position: 'relative', width: '100%' }}>
+              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }}>🔍</span>
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ ...styles.inputField, margin: 0, width: '100%', paddingLeft: '34px', boxSizing: 'border-box' }}
+                className="mono-font"
+              />
+            </div>
+            {/* Status Filter - full width below search */}
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              style={{ ...styles.selectField, flex: 1 }}
+              style={{ ...styles.selectField, width: '100%' }}
               className="mono-font"
             >
               <option value="ALL">ALL STATUSES</option>
-              <option value="PRESENT">PRESENT</option>
-              <option value="LATE">LATE</option>
-              <option value="HALF_DAY">HALF DAY</option>
-              <option value="ABSENT">ABSENT</option>
+              <option value="PRESENT">✅ PRESENT</option>
+              <option value="LATE">🕐 LATE</option>
+              <option value="HALF_DAY">🌗 HALF DAY</option>
+              <option value="ABSENT">❌ ABSENT</option>
             </select>
           </div>
 
           <div style={styles.dbList}>
             {filteredAttendance.map((rec) => (
-              <div key={rec.id} style={styles.dbRow}>
+              <div key={rec.id} style={editingRecordId === rec.id 
+                ? { ...styles.dbRow, flexDirection: 'column', alignItems: 'stretch', height: 'auto', minHeight: 'auto', padding: '16px' } 
+                : { ...styles.dbRow, padding: '14px 16px', minHeight: 'auto' }}>
                 {editingRecordId === rec.id ? (
                   <div style={styles.editRowContainer}>
                     <div style={styles.editInputs}>
-                      <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
-                        <input 
-                          type="text" 
-                          placeholder="Check-In (HH:MM)"
-                          value={editCheckIn}
-                          onChange={(e) => setEditCheckIn(e.target.value)}
-                          style={{ ...styles.inputField, margin: 0, flex: 1 }}
-                          className="mono-font"
-                        />
-                        <input 
-                          type="text" 
-                          placeholder="Check-Out (HH:MM)"
-                          value={editCheckOut}
-                          onChange={(e) => setEditCheckOut(e.target.value)}
-                          style={{ ...styles.inputField, margin: 0, flex: 1 }}
-                          className="mono-font"
-                        />
-                        <select
-                          value={editRecordStatus}
-                          onChange={(e) => setEditRecordStatus(e.target.value)}
-                          style={{ ...styles.selectField, flex: 1 }}
-                          className="mono-font"
-                        >
-                          <option value="PRESENT">PRESENT</option>
-                          <option value="LATE">LATE</option>
-                          <option value="HALF_DAY">HALF DAY</option>
-                          <option value="ABSENT">ABSENT</option>
-                        </select>
+                      <div style={{ display: 'flex', gap: '8px', width: '100%', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: '100px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">CHECK-IN</span>
+                          <input 
+                            type="time" 
+                            value={editCheckIn}
+                            onChange={(e) => setEditCheckIn(e.target.value)}
+                            style={{ ...styles.inputField, margin: 0, width: '100%' }}
+                            className="mono-font"
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: '100px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">CHECK-OUT</span>
+                          <input 
+                            type="time" 
+                            value={editCheckOut}
+                            onChange={(e) => setEditCheckOut(e.target.value)}
+                            style={{ ...styles.inputField, margin: 0, width: '100%' }}
+                            className="mono-font"
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: '120px' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 'bold' }} className="mono-font">STATUS</span>
+                          <select
+                            value={editRecordStatus}
+                            onChange={(e) => setEditRecordStatus(e.target.value)}
+                            style={{ ...styles.selectField, width: '100%' }}
+                            className="mono-font"
+                          >
+                            <option value="PRESENT">PRESENT</option>
+                            <option value="LATE">LATE</option>
+                            <option value="HALF_DAY">HALF DAY</option>
+                            <option value="ABSENT">ABSENT</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
-                    <div style={styles.editActions}>
-                      <button style={styles.saveBtn} onClick={() => saveRecordEdit(rec.id)} title="Save changes">
-                        <Check size={14} />
-                      </button>
+                    <div style={{ ...styles.editActions, alignSelf: 'flex-end', marginBottom: '2px' }}>
                       <button style={styles.cancelBtn} onClick={() => setEditingRecordId(null)} title="Cancel">
                         <X size={14} />
+                      </button>
+                      <button style={styles.saveBtn} onClick={() => saveRecordEdit(rec.id)} title="Save changes">
+                        <Check size={14} />
                       </button>
                     </div>
                   </div>
                 ) : (
                   <>
                     <div style={styles.logLeft}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ color: 'var(--color-text-secondary)', fontSize: '9px' }} className="mono-font">
-                            [{rec.date}]
-                          </span>
-                          <span style={{ fontWeight: 'bold', color: 'var(--color-text-primary)' }} className="mono-font">
+                      <ProfileAvatar employee={rec.employee} size={40} style={{ borderRadius: '10px', flexShrink: 0 }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1, overflow: 'hidden' }}>
+                        {/* Name + ID + Status pill */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--color-text-primary)', whiteSpace: 'nowrap' }} className="mono-font">
                             {rec.employee.name}
                           </span>
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '10px', whiteSpace: 'nowrap' }} className="mono-font">
+                            ({rec.employee.employeeId})
+                          </span>
                           <span style={{ 
-                            fontSize: '8px',
-                            padding: '1px 5px',
-                            borderRadius: '3px',
+                            fontSize: '9px',
+                            padding: '2px 7px',
+                            borderRadius: '20px',
                             fontWeight: 'bold',
-                            background: rec.status === 'LATE' ? 'rgba(234, 179, 8, 0.05)' : (rec.status === 'HALF_DAY' ? 'var(--color-border)' : 'var(--color-gold-bg)'),
-                            color: rec.status === 'LATE' ? '#eab308' : (rec.status === 'HALF_DAY' ? 'var(--color-text-secondary)' : 'var(--color-gold)')
-                          }} className="mono-font">{rec.status}</span>
+                            flexShrink: 0,
+                            background: rec.status === 'LATE' ? 'rgba(234,179,8,0.12)' : rec.status === 'HALF_DAY' ? 'rgba(148,163,184,0.12)' : rec.status === 'ABSENT' ? 'rgba(239,68,68,0.1)' : 'var(--color-gold-bg)',
+                            color: rec.status === 'LATE' ? '#d97706' : rec.status === 'HALF_DAY' ? 'var(--color-text-secondary)' : rec.status === 'ABSENT' ? 'var(--color-red)' : 'var(--color-gold)'
+                          }} className="mono-font">{rec.status.replace('_', ' ')}</span>
                         </div>
-                        <div style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }} className="mono-font">
-                          ID: {rec.employee.employeeId} // In: {rec.checkInTime ? rec.checkInTime.substring(0, 5) : '--'} // Out: {rec.checkOutTime ? rec.checkOutTime.substring(0, 5) : '--'} // Hours: {formatWorkingHours(rec.workingHours)}
+                        {/* Date row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>📅</span>
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontFamily: 'monospace', fontWeight: '600' }}>{rec.date}</span>
+                        </div>
+                        {/* Times row */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
+                            📥 In: <strong style={{ color: 'var(--color-text-primary)' }}>{rec.checkInTime ? rec.checkInTime.substring(0, 5) : '--:--'}</strong>
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
+                            📤 Out: <strong style={{ color: 'var(--color-text-primary)' }}>{rec.checkOutTime ? rec.checkOutTime.substring(0, 5) : '--:--'}</strong>
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--color-gold)', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                            ⏱ {formatWorkingHours(rec.workingHours)}
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     <div style={styles.dbActions}>
-                      <button style={styles.actionBtn} onClick={() => startEditRecord(rec)} title="Edit checkin times">
-                        <Edit2 size={12} />
+                      <button style={{ ...styles.actionBtn, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => startEditRecord(rec)} title="Edit checkin times">
+                        <Edit2 size={13} />
                       </button>
                     </div>
                   </>
@@ -1436,7 +1728,6 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
           <div style={styles.ledgerFilterBar}>
             <input 
               type="text" 
-              placeholder="Filter sessions by employee name or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ ...styles.inputField, margin: 0, flex: 1 }}
@@ -1520,7 +1811,6 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
           <div style={styles.ledgerFilterBar}>
             <input 
               type="text" 
-              placeholder="Search audit trail by type, timestamp or message..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ ...styles.inputField, margin: 0, flex: 1 }}
@@ -1658,18 +1948,73 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
           </div>
         </div>
       )}
+      
+      {/* Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div style={styles.modalOverlay}>
+          <div className="cyber-panel" style={styles.modalContent}>
+            <div style={styles.cardHeaderPlate} className="mono-font">
+              <AlertTriangle size={12} style={{ color: 'var(--color-red)' }} />
+              <span>{confirmModal.title}</span>
+              <button 
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} 
+                style={{ background: 'none', border: 'none', color: 'var(--color-text-primary)', cursor: 'pointer', marginLeft: 'auto', display: 'flex', alignItems: 'center' }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            <div style={{ ...styles.modalBody, padding: '24px', gap: '20px' }}>
+              <p className="mono-font" style={{ fontSize: '12px', color: 'var(--color-text-primary)', margin: 0, lineHeight: '1.6', textAlign: 'left' }}>
+                {confirmModal.message}
+              </p>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button 
+                  className="mono-font"
+                  style={{
+                    ...styles.cancelBtn,
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '8px'
+                  }}
+                  onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="mono-font"
+                  style={{
+                    ...styles.saveBtn,
+                    background: 'var(--color-red)',
+                    color: '#ffffff',
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => {
+                    if (confirmModal.onConfirm) confirmModal.onConfirm();
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      </div>{/* end scrollable tab content */}
     </div>
   );
 }
 
 const styles = {
   container: {
-    padding: '24px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
     flex: 1,
-    overflowY: 'auto'
+    overflow: 'hidden'
   },
   loginContainer: {
     padding: '60px 20px',
@@ -1708,7 +2053,9 @@ const styles = {
   inputGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px'
+    gap: '6px',
+    minWidth: '220px',
+    flex: 1
   },
   inputLabel: {
     fontSize: '9px',
@@ -1805,7 +2152,12 @@ const styles = {
     gap: '4px',
     borderBottom: '1px solid var(--color-border)',
     paddingBottom: '2px',
-    overflowX: 'auto'
+    overflowX: 'auto',
+    position: 'sticky',
+    top: 0,
+    zIndex: 5,
+    background: 'var(--color-bg-deep)',
+    flexShrink: 0
   },
   subTabButton: {
     background: 'none',
@@ -1835,12 +2187,13 @@ const styles = {
   },
   formRow: {
     display: 'flex',
-    gap: '16px'
+    gap: '16px',
+    flexWrap: 'wrap'
   },
   dbList: {
     flex: 1,
     overflowY: 'auto',
-    maxHeight: '340px',
+    maxHeight: '680px',
     display: 'flex',
     flexDirection: 'column'
   },
@@ -1878,12 +2231,14 @@ const styles = {
     display: 'flex',
     width: '100%',
     alignItems: 'center',
-    gap: '12px'
+    gap: '12px',
+    flexWrap: 'wrap'
   },
   editInputs: {
     display: 'flex',
     flex: 1,
-    gap: '10px'
+    gap: '10px',
+    flexWrap: 'wrap'
   },
   editActions: {
     display: 'flex',
@@ -2034,7 +2389,8 @@ const styles = {
     borderBottom: '1px solid var(--color-border)',
     display: 'flex',
     gap: '12px',
-    alignItems: 'center'
+    alignItems: 'center',
+    flexWrap: 'wrap'
   },
   analyticsWrapper: {
     display: 'flex',
