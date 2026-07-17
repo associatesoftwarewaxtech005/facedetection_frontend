@@ -218,9 +218,9 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
     if (!empIdInput.trim() || !empName.trim()) return;
 
     // Strict Javascript validations
-    const empIdRegex = /^[a-zA-Z]{2}\d+$/;
-    if (!empIdRegex.test(empIdInput) || empIdInput.length < 3) {
-      alert("Employee ID must start with exactly 2 letters followed only by numbers (e.g. EP10005).");
+    const empIdRegex = /^[a-zA-Z]{3}\d+$/;
+    if (!empIdRegex.test(empIdInput) || empIdInput.length < 4) {
+      alert("Employee ID must start with exactly 3 letters followed only by numbers (e.g. EMP10005).");
       return;
     }
 
@@ -1015,7 +1015,7 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                       let formatted = '';
                       for (let i = 0; i < clean.length; i++) {
                         const char = clean[i];
-                        if (i < 2) {
+                        if (i < 3) {
                           if (/[a-zA-Z]/.test(char)) formatted += char.toUpperCase();
                         } else {
                           if (/[0-9]/.test(char)) formatted += char;
