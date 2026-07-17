@@ -371,14 +371,17 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
         video: { facingMode: 'user', width: 320, height: 320 }
       });
       setStream(mediaStream);
-      setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = mediaStream;
-      }, 200);
     } catch (err) {
       console.error(err);
       alert("Webcam camera access failed.");
     }
   };
+
+  useEffect(() => {
+    if (videoRef.current && stream && cameraEmployee) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream, cameraEmployee]);
 
   const stopCamera = () => {
     if (stream) {

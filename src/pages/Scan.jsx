@@ -145,14 +145,17 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
         video: { facingMode: 'user', width: 480, height: 480 }
       });
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
     } catch (err) {
       console.error("Camera access denied:", err);
       setCameraError(true);
     }
   };
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
   const stopCamera = () => {
     if (stream) {
