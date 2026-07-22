@@ -300,8 +300,8 @@ export default function UserTab({ loggedInEmployee, onLogout, onLoginSuccess }) 
                     <div style={styles.recordRight}>
                       <div style={styles.timeInfo}>
                         <Clock size={10} />
-                        <span>In: {rec.checkInTime ? rec.checkInTime.substring(0, 5) : '--:--'}</span>
-                        <span>Out: {rec.checkOutTime ? rec.checkOutTime.substring(0, 5) : '--:--'}</span>
+                        <span>In: {rec.checkInTime ? rec.checkInTime.substring(0, 8) : '--:--'}</span>
+                        <span>Out: {rec.checkOutTime ? rec.checkOutTime.substring(0, 8) : '--:--'}</span>
                       </div>
                       <span style={styles.workHours}>{formatWorkingHours(rec.workingHours)}</span>
                     </div>

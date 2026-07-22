@@ -141,12 +141,20 @@ export default function ScanTab({ onScanComplete, soundEnabled, initialMode = 'c
   const startCamera = async () => {
     setCameraError(false);
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 480, height: 480 }
-      });
+      let mediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }
+        });
+      } catch (firstErr) {
+        // Fallback for mobile browsers that do not support ideal dimension objects
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' }
+        });
+      }
       setStream(mediaStream);
     } catch (err) {
-      console.error("Camera access denied:", err);
+      console.error("Camera access denied or unavailable:", err);
       setCameraError(true);
     }
   };

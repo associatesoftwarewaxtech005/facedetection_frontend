@@ -276,6 +276,16 @@ export default function App() {
             <span>Home</span>
           </button>
 
+          <button 
+            className={`nav-item ${tab === 'scan' ? 'active' : ''}`}
+            onClick={() => {
+              setScanMode('check-in');
+              setTab('scan');
+            }}
+          >
+            <ScanFace className="nav-icon" />
+            <span>Scan</span>
+          </button>
 
           <button 
             className={`nav-item ${tab === 'users' ? 'active' : ''}`}

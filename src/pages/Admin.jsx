@@ -367,13 +367,20 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
     setCameraEmployee(employee);
     setCapturedFrames([]);
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 320, height: 320 }
-      });
+      let mediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }
+        });
+      } catch (firstErr) {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' }
+        });
+      }
       setStream(mediaStream);
     } catch (err) {
       console.error(err);
-      alert("Webcam camera access failed.");
+      alert("Camera access failed. Please ensure camera permissions are granted and the app is served via HTTPS on mobile.");
     }
   };
 
@@ -695,8 +702,8 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
           <td>${rec.employee.employeeId}</td>
           <td>${rec.employee.name}</td>
           <td>${rec.employee.department}</td>
-          <td>${rec.checkInTime ? rec.checkInTime.substring(0, 5) : '--:--'}</td>
-          <td>${rec.checkOutTime ? rec.checkOutTime.substring(0, 5) : '--:--'}</td>
+          <td>${rec.checkInTime ? rec.checkInTime.substring(0, 8) : '--:--'}</td>
+          <td>${rec.checkOutTime ? rec.checkOutTime.substring(0, 8) : '--:--'}</td>
           <td>${rec.workingHours ? rec.workingHours.toFixed(2) : '0.00'}</td>
           <td><span class="badge ${badgeClass}">${rec.status.replace('_', ' ')}</span></td>
         </tr>
@@ -1481,10 +1488,10 @@ export default function AdminPanel({ soundEnabled, initialTab = 'employees' }) {
                         {/* Times row */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
-                            📥 In: <strong style={{ color: 'var(--color-text-primary)' }}>{rec.checkInTime ? rec.checkInTime.substring(0, 5) : '--:--'}</strong>
+                            📥 In: <strong style={{ color: 'var(--color-text-primary)' }}>{rec.checkInTime ? rec.checkInTime.substring(0, 8) : '--:--'}</strong>
                           </span>
                           <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontFamily: 'monospace' }}>
-                            📤 Out: <strong style={{ color: 'var(--color-text-primary)' }}>{rec.checkOutTime ? rec.checkOutTime.substring(0, 5) : '--:--'}</strong>
+                            📤 Out: <strong style={{ color: 'var(--color-text-primary)' }}>{rec.checkOutTime ? rec.checkOutTime.substring(0, 8) : '--:--'}</strong>
                           </span>
                           <span style={{ fontSize: '11px', color: 'var(--color-gold)', fontWeight: 'bold', fontFamily: 'monospace' }}>
                             ⏱ {formatWorkingHours(rec.workingHours)}
